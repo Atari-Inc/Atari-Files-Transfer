@@ -275,6 +275,9 @@ export const FILE_OPERATIONS = {
 // Local storage keys
 export const STORAGE_KEYS = {
   TOKEN: 'token',
+  REFRESH_TOKEN: 'refresh_token',
+  TOKEN_TYPE: 'token_type',
+  EXPIRES_IN: 'expires_in',
   USER: 'user',
   THEME: 'theme',
   SIDEBAR_COLLAPSED: 'sidebarCollapsed',
