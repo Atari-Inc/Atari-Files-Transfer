@@ -73,10 +73,24 @@ const UserManagement = ({ onNotification }) => {
       setLoading(true);
       setError(null);
       const response = await usersAPI.getAll();
-      setUsers(response.data || []);
+      
+      // Handle different response structures
+      let usersData = [];
+      if (response?.data) {
+        if (Array.isArray(response.data)) {
+          usersData = response.data;
+        } else if (response.data.users && Array.isArray(response.data.users)) {
+          usersData = response.data.users;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          usersData = response.data.data;
+        }
+      }
+      
+      setUsers(usersData);
     } catch (err) {
       console.error('Error loading users:', err);
       setError('Failed to load users');
+      setUsers([]); // Ensure users is always an array
       onNotification('Error loading users', 'error');
     } finally {
       setLoading(false);
@@ -368,42 +382,40 @@ const UserManagement = ({ onNotification }) => {
     window.URL.revokeObjectURL(url);
   };
 
-  // Helper functions to extract user data
+  // Helper functions to extract user data from database format
   const getUserEmail = (user) => {
-    return user.Tags?.find(tag => tag.Key === 'Email')?.Value || '';
+    return user.email || '';
   };
 
   const getUserFirstName = (user) => {
-    return user.Tags?.find(tag => tag.Key === 'FirstName')?.Value || '';
+    return user.firstName || '';
   };
 
   const getUserLastName = (user) => {
-    return user.Tags?.find(tag => tag.Key === 'LastName')?.Value || '';
+    return user.lastName || '';
   };
 
   const getUserRole = (user) => {
-    return user.Tags?.find(tag => tag.Key === 'Role')?.Value || 'user';
+    return user.role || 'user';
   };
 
   const getUserFolders = (user) => {
-    // This would need to be extracted from the user's policy
-    // For now, return empty array - this would be enhanced later
-    return [];
+    return user.allowedFolders || [];
   };
 
   const getUserCreatedDate = (user) => {
-    return user.DateCreated ? new Date(user.DateCreated).toLocaleDateString() : 'N/A';
+    return user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A';
   };
 
   // Filtering and sorting logic
-  const allFilteredUsers = users
+  const allFilteredUsers = (Array.isArray(users) ? users : [])
     .filter(user => {
-      const username = (user.UserName || user.username || '').toLowerCase();
+      const username = (user.username || '').toLowerCase();
       const email = getUserEmail(user).toLowerCase();
       const firstName = getUserFirstName(user).toLowerCase();
       const lastName = getUserLastName(user).toLowerCase();
       const role = getUserRole(user).toLowerCase();
-      const status = (user.State || 'active').toLowerCase();
+      const status = (user.status || 'active').toLowerCase();
       
       const matchesSearch = searchTerm === '' || 
         username.includes(searchTerm.toLowerCase()) ||
@@ -421,8 +433,8 @@ const UserManagement = ({ onNotification }) => {
       
       switch (sortBy) {
         case 'username':
-          aValue = (a.UserName || a.username || '').toLowerCase();
-          bValue = (b.UserName || b.username || '').toLowerCase();
+          aValue = (a.username || '').toLowerCase();
+          bValue = (b.username || '').toLowerCase();
           break;
         case 'email':
           aValue = getUserEmail(a).toLowerCase();
@@ -433,12 +445,12 @@ const UserManagement = ({ onNotification }) => {
           bValue = getUserRole(b).toLowerCase();
           break;
         case 'created':
-          aValue = new Date(a.DateCreated || 0);
-          bValue = new Date(b.DateCreated || 0);
+          aValue = new Date(a.createdAt || 0);
+          bValue = new Date(b.createdAt || 0);
           break;
         default:
-          aValue = (a.UserName || a.username || '').toLowerCase();
-          bValue = (b.UserName || b.username || '').toLowerCase();
+          aValue = (a.username || '').toLowerCase();
+          bValue = (b.username || '').toLowerCase();
       }
       
       if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
@@ -527,7 +539,7 @@ const UserManagement = ({ onNotification }) => {
             <h2>User Management</h2>
             <div className="user-stats">
               <div className="stat-item">
-                <span className="stat-number">{users.length}</span>
+                <span className="stat-number">{Array.isArray(users) ? users.length : 0}</span>
                 <span className="stat-label">Total Users</span>
               </div>
               <div className="stat-item">
@@ -535,7 +547,7 @@ const UserManagement = ({ onNotification }) => {
                 <span className="stat-label">Filtered</span>
               </div>
               <div className="stat-item">
-                <span className="stat-number">{users.filter(u => (u.State || 'active').toLowerCase() === 'active').length}</span>
+                <span className="stat-number">{(Array.isArray(users) ? users : []).filter(u => (u.State || 'active').toLowerCase() === 'active').length}</span>
                 <span className="stat-label">Active</span>
               </div>
               <div className="stat-item">
@@ -694,9 +706,9 @@ const UserManagement = ({ onNotification }) => {
         {allFilteredUsers.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">👥</div>
-            <h3>{users.length === 0 ? 'No Users Found' : 'No users match your search'}</h3>
-            <p>{users.length === 0 ? 'Create your first user to get started with AWS Transfer Family' : 'Try adjusting your search or filter criteria'}</p>
-            {users.length === 0 && (
+            <h3>{(Array.isArray(users) ? users.length : 0) === 0 ? 'No Users Found' : 'No users match your search'}</h3>
+            <p>{(Array.isArray(users) ? users.length : 0) === 0 ? 'Create your first user to get started with AWS Transfer Family' : 'Try adjusting your search or filter criteria'}</p>
+            {(Array.isArray(users) ? users.length : 0) === 0 && (
               <button 
                 className="btn btn-primary"
                 onClick={() => setShowCreateModal(true)}
@@ -751,13 +763,13 @@ const UserManagement = ({ onNotification }) => {
                     <td className="user-info-cell">
                       <div className="user-info">
                         <div className="user-avatar">
-                          <span className="avatar-text">{(user.UserName || user.username)?.[0]?.toUpperCase()}</span>
+                          <span className="avatar-text">{user.username?.[0]?.toUpperCase()}</span>
                           <div className="user-status-indicator">
-                            <span className={`status-dot status-${(user.State || 'active').toLowerCase()}`}></span>
+                            <span className={`status-dot status-${(user.status || 'active').toLowerCase()}`}></span>
                           </div>
                         </div>
                         <div className="user-details">
-                          <div className="user-name">{user.UserName || user.username}</div>
+                          <div className="user-name">{user.username}</div>
                           <div className="user-fullname">
                             {getUserFirstName(user)} {getUserLastName(user)}
                           </div>
@@ -767,7 +779,7 @@ const UserManagement = ({ onNotification }) => {
                     <td className="contact-cell">
                       <div className="contact-info">
                         <div className="email">{getUserEmail(user) || 'No email'}</div>
-                        <div className="server-id">Server: {user.ServerId || 'Default'}</div>
+                        <div className="server-id">ID: {user.id}</div>
                       </div>
                     </td>
                     <td className="role-cell">
@@ -777,17 +789,17 @@ const UserManagement = ({ onNotification }) => {
                     </td>
                     <td className="directory-cell">
                       <code className="directory-path">
-                        {user.HomeDirectory || 'Not set'}
+                        {user.homeDirectory || 'Not set'}
                       </code>
                     </td>
                     <td className="status-cell">
-                      <span className={`status-badge status-${(user.State || 'active').toLowerCase()}`}>
-                        {user.State || 'Active'}
+                      <span className={`status-badge status-${(user.status || 'active').toLowerCase()}`}>
+                        {user.status || 'Active'}
                       </span>
                     </td>
                     <td className="ssh-keys-cell">
                       <div className="ssh-info">
-                        <span className="ssh-count">{user.SshPublicKeyCount || 0}</span>
+                        <span className="ssh-count">{user.sshPublicKey ? 1 : 0}</span>
                         <span className="ssh-label">keys</span>
                       </div>
                     </td>
@@ -849,8 +861,8 @@ const UserManagement = ({ onNotification }) => {
               <div className="pagination-info">
                 <span className="pagination-summary">
                   Showing {startIndex + 1}-{Math.min(endIndex, allFilteredUsers.length)} of {allFilteredUsers.length} users
-                  {allFilteredUsers.length !== users.length && (
-                    <span className="filtered-info"> (filtered from {users.length} total)</span>
+                  {allFilteredUsers.length !== (Array.isArray(users) ? users.length : 0) && (
+                    <span className="filtered-info"> (filtered from {Array.isArray(users) ? users.length : 0} total)</span>
                   )}
                 </span>
                 

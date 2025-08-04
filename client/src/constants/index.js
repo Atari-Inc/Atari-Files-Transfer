@@ -175,19 +175,25 @@ export const NAVIGATION_ITEMS = {
       tooltip: 'Manage Your Files'
     },
     {
+      id: ROUTES.TRANSFERS,
+      label: 'Transfers',
+      icon: '⚡',
+      tooltip: 'Transfer Monitoring'
+    },
+    {
+      id: ROUTES.SETTINGS,
+      label: 'Settings',
+      icon: '⚙️',
+      tooltip: 'User Settings'
+    }
+  ],
+  ADMIN: [
+    {
       id: ROUTES.SERVER_MANAGER,
       label: 'Server Manager',
       icon: '🖥️',
       tooltip: 'Server Administration'
     },
-    {
-      id: ROUTES.TRANSFERS,
-      label: 'Transfers',
-      icon: '⚡',
-      tooltip: 'Transfer Monitoring'
-    }
-  ],
-  ADMIN: [
     {
       id: ROUTES.USERS,
       label: 'Users',
@@ -205,12 +211,6 @@ export const NAVIGATION_ITEMS = {
       label: 'Activity Logs',
       icon: '📋',
       tooltip: 'System Activity Logs'
-    },
-    {
-      id: ROUTES.SETTINGS,
-      label: 'Settings',
-      icon: '⚙️',
-      tooltip: 'System Settings'
     }
   ]
 };

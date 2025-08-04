@@ -73,18 +73,25 @@ def create_auth_blueprint(auth_service: AuthService) -> Blueprint:
     def refresh():
         """Token refresh endpoint"""
         try:
-            current_user = get_jwt_identity()
+            # Get username from JWT identity
+            username = get_jwt_identity()
             
-            if not current_user:
+            if not username:
                 return jsonify({
                     "error": "Invalid token",
                     "message": "Unable to identify user from token"
                 }), 401
             
-            # Generate new access token
-            new_token = auth_service.refresh_access_token(current_user)
+            # Get additional claims from JWT
+            from flask_jwt_extended import get_jwt
+            claims = get_jwt()
+            role = claims.get("role", "user")
+            email = claims.get("email", "")
             
-            logger.info(f"Token refreshed for user: {current_user.get('username')}")
+            # Generate new access token
+            new_token = auth_service.refresh_access_token(username, role, email)
+            
+            logger.info(f"Token refreshed for user: {username}")
             
             return jsonify({
                 "access_token": new_token,
@@ -104,7 +111,8 @@ def create_auth_blueprint(auth_service: AuthService) -> Blueprint:
     def get_current_user():
         """Get current user information"""
         try:
-            current_user = get_jwt_identity()
+            # Use auth service to get current user data properly
+            current_user = auth_service.get_current_user()
             
             if not current_user:
                 return jsonify({
@@ -134,14 +142,15 @@ def create_auth_blueprint(auth_service: AuthService) -> Blueprint:
     def logout():
         """User logout endpoint (placeholder)"""
         try:
-            current_user = get_jwt_identity()
+            # Get username from JWT identity
+            username = get_jwt_identity()
             
             # In a production system, you would:
             # 1. Add token to blacklist/revocation list
             # 2. Clear any server-side sessions
             # 3. Log the logout event
             
-            logger.info(f"User logout: {current_user.get('username') if current_user else 'unknown'}")
+            logger.info(f"User logout: {username if username else 'unknown'}")
             
             return jsonify({
                 "message": "Logout successful"
@@ -159,9 +168,10 @@ def create_auth_blueprint(auth_service: AuthService) -> Blueprint:
     def change_password():
         """Change user password"""
         try:
-            current_user = get_jwt_identity()
+            # Get username from JWT identity
+            username = get_jwt_identity()
             
-            if not current_user:
+            if not username:
                 return jsonify({
                     "error": "Invalid token",
                     "message": "Unable to identify user from token"
@@ -185,7 +195,6 @@ def create_auth_blueprint(auth_service: AuthService) -> Blueprint:
                 }), 400
             
             # Change password
-            username = current_user.get("username")
             success = auth_service.change_password(username, current_password, new_password)
             
             if not success:

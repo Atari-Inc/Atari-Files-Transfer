@@ -2,12 +2,19 @@
 :root {
   /* Primary color palette */
   --primary-color: #3b82f6;
-  --primary-dark: #2563eb;
-  --primary-light: #60a5fa;
+  --primary-color-dark: #2563eb;
+  --primary-color-light: #60a5fa;
+  --primary-color-10: rgba(59, 130, 246, 0.1);
   --secondary-color: #8b5cf6;
   --success-color: #10b981;
+  --success-color-dark: #059669;
+  --success-color-10: rgba(16, 185, 129, 0.1);
   --warning-color: #f59e0b;
-  --danger-color: #ef4444;
+  --warning-color-dark: #d97706;
+  --error-color: #ef4444;
+  --error-color-dark: #dc2626;
+  --error-color-5: rgba(239, 68, 68, 0.05);
+  --error-color-10: rgba(239, 68, 68, 0.1);
   --info-color: #06b6d4;
   
   /* Neutral colors */
@@ -24,9 +31,11 @@
   --gray-900: #111827;
   
   /* Background colors */
-  --bg-primary: var(--white);
-  --bg-secondary: var(--gray-50);
-  --bg-tertiary: var(--gray-100);
+  --background-primary: var(--white);
+  --background-secondary: var(--gray-50);
+  --background-hover: var(--gray-100);
+  --card-background: var(--white);
+  --input-background: var(--white);
   --bg-dark: var(--gray-800);
   
   /* Text colors */
@@ -35,14 +44,14 @@
   --text-tertiary: var(--gray-400);
   
   /* Border colors */
-  --border-light: var(--gray-200);
+  --border-color: var(--gray-200);
   --border-medium: var(--gray-300);
   --border-dark: var(--gray-400);
   
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-small: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-medium: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-large: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   
   /* Transitions */
@@ -81,13 +90,17 @@
 
 /* Dark mode variables */
 .dark-mode {
-  --bg-primary: var(--gray-900);
-  --bg-secondary: var(--gray-800);
-  --bg-tertiary: var(--gray-700);
+  --background-primary: var(--gray-900);
+  --background-secondary: var(--gray-800);
+  --background-hover: var(--gray-700);
+  --card-background: var(--gray-800);
+  --card-background-dark: var(--gray-900);
+  --input-background: var(--gray-800);
+  --input-background-dark: var(--gray-900);
   --text-primary: var(--gray-100);
   --text-secondary: var(--gray-300);
   --text-tertiary: var(--gray-500);
-  --border-light: var(--gray-700);
+  --border-color: var(--gray-700);
   --border-medium: var(--gray-600);
   --border-dark: var(--gray-500);
 }

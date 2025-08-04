@@ -4,7 +4,7 @@ Authentication service for JWT token management
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Any
-from flask_jwt_extended import create_access_token, create_refresh_token, get_jwt_identity
+from flask_jwt_extended import create_access_token, create_refresh_token, get_jwt_identity, get_jwt
 import bcrypt
 
 from app.config.settings import Config
@@ -155,9 +155,11 @@ class AuthService:
             Dictionary containing access and refresh tokens
         """
         try:
-            # Create token identity
-            identity = {
-                "username": user_data["username"],
+            # Use username as identity (subject must be string)
+            identity = user_data["username"]
+            
+            # Additional claims for user data
+            additional_claims = {
                 "role": user_data["role"],
                 "email": user_data.get("email", "")
             }
@@ -165,11 +167,13 @@ class AuthService:
             # Generate tokens
             access_token = create_access_token(
                 identity=identity,
+                additional_claims=additional_claims,
                 expires_delta=timedelta(seconds=self.config.JWT_ACCESS_TOKEN_EXPIRES)
             )
             
             refresh_token = create_refresh_token(
                 identity=identity,
+                additional_claims=additional_claims,
                 expires_delta=timedelta(seconds=self.config.JWT_REFRESH_TOKEN_EXPIRES)
             )
             
@@ -186,23 +190,32 @@ class AuthService:
             logger.error(f"Token generation error: {str(e)}")
             raise
     
-    def refresh_access_token(self, current_user: Dict[str, Any]) -> str:
+    def refresh_access_token(self, username: str, role: str, email: str = "") -> str:
         """
         Generate new access token from refresh token
         
         Args:
-            current_user: Current user data from refresh token
+            username: Username as string identity
+            role: User role
+            email: User email
             
         Returns:
             New access token
         """
         try:
+            # Additional claims for user data
+            additional_claims = {
+                "role": role,
+                "email": email
+            }
+            
             new_token = create_access_token(
-                identity=current_user,
+                identity=username,
+                additional_claims=additional_claims,
                 expires_delta=timedelta(seconds=self.config.JWT_ACCESS_TOKEN_EXPIRES)
             )
             
-            logger.info(f"Refreshed access token for user: {current_user.get('username')}")
+            logger.info(f"Refreshed access token for user: {username}")
             return new_token
             
         except Exception as e:
@@ -217,9 +230,22 @@ class AuthService:
             Current user data or None
         """
         try:
-            current_user = get_jwt_identity()
-            if current_user:
-                logger.debug(f"Retrieved current user: {current_user.get('username')}")
+            # Get username from identity
+            username = get_jwt_identity()
+            if not username:
+                return None
+                
+            # Get additional claims
+            claims = get_jwt()
+            
+            # Construct user data
+            current_user = {
+                "username": username,
+                "role": claims.get("role", "user"),
+                "email": claims.get("email", "")
+            }
+            
+            logger.debug(f"Retrieved current user: {username}")
             return current_user
             
         except Exception as e:

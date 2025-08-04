@@ -22,12 +22,9 @@ def create_user_blueprint(user_service: UserService, auth_service: AuthService) 
     def list_users():
         """List all users"""
         try:
-            users = user_service.list_users()
+            users_data = user_service.list_users()
             
-            # Convert to dict format for JSON response
-            users_data = [user.to_dict() for user in users]
-            
-            logger.info(f"Retrieved {len(users)} users")
+            logger.info(f"Retrieved {len(users_data)} users")
             
             return jsonify({
                 "users": users_data,
@@ -46,9 +43,9 @@ def create_user_blueprint(user_service: UserService, auth_service: AuthService) 
     def get_user(username: str):
         """Get user details by username"""
         try:
-            user = user_service.get_user(username)
+            user_data = user_service.get_user(username)
             
-            if not user:
+            if not user_data:
                 return jsonify({
                     "error": "User not found",
                     "message": f"User '{username}' does not exist"
@@ -57,7 +54,7 @@ def create_user_blueprint(user_service: UserService, auth_service: AuthService) 
             logger.info(f"Retrieved user details: {username}")
             
             return jsonify({
-                "user": user.to_dict()
+                "user": user_data
             }), 200
             
         except Exception as e:
@@ -102,13 +99,13 @@ def create_user_blueprint(user_service: UserService, auth_service: AuthService) 
             )
             
             # Create user
-            user = user_service.create_user(user_request)
+            user_data = user_service.create_user(user_request)
             
             logger.info(f"User created successfully: {user_request.username}")
             
             return jsonify({
                 "message": "User created successfully",
-                "user": user.to_dict()
+                "user": user_data
             }), 201
             
         except ValueError as e:
@@ -155,13 +152,13 @@ def create_user_blueprint(user_service: UserService, auth_service: AuthService) 
             )
             
             # Update user
-            user = user_service.update_user(username, user_request)
+            user_data = user_service.update_user(username, user_request)
             
             logger.info(f"User updated successfully: {username}")
             
             return jsonify({
                 "message": "User updated successfully",
-                "user": user.to_dict()
+                "user": user_data
             }), 200
             
         except ValueError as e:
@@ -183,7 +180,7 @@ def create_user_blueprint(user_service: UserService, auth_service: AuthService) 
         """Delete user"""
         try:
             # Prevent deletion of current user
-            current_user = get_jwt_identity()
+            current_user = auth_service.get_current_user()
             if current_user and current_user.get('username') == username:
                 return jsonify({
                     "error": "Cannot delete current user",
@@ -218,7 +215,7 @@ def create_user_blueprint(user_service: UserService, auth_service: AuthService) 
         """Change user password"""
         try:
             # Check if user can change this password
-            current_user = get_jwt_identity()
+            current_user = auth_service.get_current_user()
             if not current_user:
                 return jsonify({
                     "error": "Authentication required",
@@ -282,27 +279,25 @@ def create_user_blueprint(user_service: UserService, auth_service: AuthService) 
     def get_user_credentials(username: str):
         """Get user credentials and connection info"""
         try:
-            user = user_service.get_user(username)
+            user_data = user_service.get_user(username)
             
-            if not user:
+            if not user_data:
                 return jsonify({
                     "error": "User not found",
                     "message": f"User '{username}' does not exist"
                 }), 404
             
             # Get connection information
-            # In a real implementation, this would include SFTP server details
             credentials = {
-                "username": user.UserName,
-                "server_id": user.ServerId,
-                "home_directory": user.HomeDirectory,
-                "status": user.State,
-                "ssh_keys_count": user.SshPublicKeyCount,
-                "sftp_connection": {
-                    "host": "your-transfer-server-endpoint.amazonaws.com",
-                    "port": 22,
-                    "protocol": "SFTP"
-                }
+                "username": user_data["username"],
+                "email": user_data.get("email"),
+                "role": user_data["role"],
+                "status": user_data["status"],
+                "home_directory": user_data.get("homeDirectory"),
+                "allowed_folders": user_data.get("allowedFolders", []),
+                "created_at": user_data.get("createdAt"),
+                "last_login": user_data.get("lastLogin"),
+                "is_active": user_data["isActive"]
             }
             
             logger.info(f"Retrieved credentials for user: {username}")

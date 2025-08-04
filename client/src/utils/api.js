@@ -46,6 +46,7 @@ export const authAPI = {
   logout: () => apiClient.post('/api/auth/logout'),
   me: () => apiClient.get('/api/auth/me'),
   refreshToken: () => apiClient.post('/api/auth/refresh'),
+  changePassword: (passwordData) => apiClient.post('/api/auth/change-password', passwordData),
 };
 
 // Users API
@@ -104,9 +105,7 @@ export const sftpAPI = {
 // Dashboard API
 export const dashboardAPI = {
   getStats: () => apiClient.get('/api/dashboard/stats'),
-  getRecentFiles: () => apiClient.get('/api/dashboard/recent-files'),
-  getSystemStatus: () => apiClient.get('/api/dashboard/system-status'),
-  getActivity: () => apiClient.get('/api/dashboard/activity'),
+  getRecentActivity: () => apiClient.get('/api/dashboard/recent-activity'),
 };
 
 // Logs API

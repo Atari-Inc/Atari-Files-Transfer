@@ -47,13 +47,13 @@ const Header = ({
         <div className="user-menu">
           <div className="user-info">
             <div className="user-avatar">
-              {user.firstName ? user.firstName[0].toUpperCase() : user.username[0].toUpperCase()}
+              {user?.firstName ? user.firstName[0].toUpperCase() : user?.username?.[0]?.toUpperCase() || 'U'}
             </div>
             <div className="user-details">
               <span className="user-name">
-                {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}
+                {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || 'User'}
               </span>
-              <span className="user-role">{user.role}</span>
+              <span className="user-role">{user?.role || 'user'}</span>
             </div>
           </div>
           <button 

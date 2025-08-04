@@ -15,6 +15,7 @@ from app.services.s3_service import S3Service
 from app.controllers.auth_controller import create_auth_blueprint
 from app.controllers.user_controller import create_user_blueprint
 from app.controllers.s3_controller import create_s3_blueprint
+from app.controllers.dashboard_controller import create_dashboard_blueprint
 from app.middleware.error_handler import register_error_handlers
 from app.utils.logger import setup_logging
 
@@ -179,11 +180,13 @@ def register_blueprints(app: Flask, services: dict) -> None:
         auth_bp = create_auth_blueprint(services['auth_service'])
         user_bp = create_user_blueprint(services['user_service'], services['auth_service'])
         s3_bp = create_s3_blueprint(services['s3_service'], services['auth_service'])
+        dashboard_bp = create_dashboard_blueprint(services['user_service'])
         
         # Register blueprints
         app.register_blueprint(auth_bp)
         app.register_blueprint(user_bp)
         app.register_blueprint(s3_bp)
+        app.register_blueprint(dashboard_bp)
         
         logger.info("Blueprints registered successfully")
         

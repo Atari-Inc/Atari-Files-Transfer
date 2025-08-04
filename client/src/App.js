@@ -13,12 +13,16 @@ import Dashboard from './components/dashboard/Dashboard';
 import FileManager from './components/file-manager/FileManager';
 import ServerManager from './components/server-manager/ServerManager';
 import UserManagement from './components/user-management/UserManagement';
+import UserSettings from './components/user-settings/UserSettings';
+import Transfers from './components/transfers/Transfers';
+import Folders from './components/folders/Folders';
+import ActivityLogs from './components/activity-logs/ActivityLogs';
 
 // Import styles
 import './styles/index.css';
 
 function App() {
-  const { user, loading, login, logout, isAuthenticated } = useAuth();
+  const { user, loading, login, logout, updateUser, isAuthenticated } = useAuth();
   const { notifications, addNotification, removeNotification } = useNotifications();
   
   // UI State
@@ -81,8 +85,45 @@ function App() {
     );
   }
 
-  // Render page content based on active page
+  // Role-based access control
+  const hasAccess = (route) => {
+    if (!user) return false;
+    
+    const adminOnlyRoutes = [ROUTES.USERS, ROUTES.SERVER_MANAGER, ROUTES.LOGS, ROUTES.FOLDERS];
+    const userRoutes = [ROUTES.DASHBOARD, ROUTES.FILE_MANAGER, ROUTES.TRANSFERS, ROUTES.SETTINGS];
+    
+    if (user.role === 'admin') {
+      return true; // Admin has access to everything
+    }
+    
+    return userRoutes.includes(route);
+  };
+
+  // Render access denied page
+  const renderAccessDenied = () => (
+    <div className="page-content">
+      <div className="access-denied">
+        <div className="access-denied-icon">🚫</div>
+        <h2>Access Denied</h2>
+        <p>You don't have permission to access this page.</p>
+        <p>Contact your administrator if you need access.</p>
+        <button 
+          className="back-btn"
+          onClick={() => setActivePage(ROUTES.DASHBOARD)}
+        >
+          Go to Dashboard
+        </button>
+      </div>
+    </div>
+  );
+
+  // Render page content based on active page and user role
   const renderPageContent = () => {
+    // Check access first
+    if (!hasAccess(activePage)) {
+      return renderAccessDenied();
+    }
+
     switch (activePage) {
       case ROUTES.DASHBOARD:
         return <Dashboard user={user} onNotification={addNotification} />;
@@ -94,66 +135,24 @@ function App() {
         return <ServerManager user={user} onNotification={addNotification} />;
       
       case ROUTES.TRANSFERS:
-        return (
-          <div className="page-content">
-            <div className="page-header">
-              <h2>Active Transfers</h2>
-              <p>Monitor your file transfer operations</p>
-            </div>
-            <div className="coming-soon">
-              <div className="coming-soon-icon">🚀</div>
-              <h3>Transfer Monitor Coming Soon</h3>
-              <p>Real-time transfer monitoring and progress tracking</p>
-            </div>
-          </div>
-        );
+        return <Transfers user={user} onNotification={addNotification} />;
       
       case ROUTES.USERS:
         return <UserManagement onNotification={addNotification} />;
       
       case ROUTES.FOLDERS:
-        return (
-          <div className="page-content">
-            <div className="page-header">
-              <h2>Folder Management</h2>
-              <p>Configure shared folders and permissions</p>
-            </div>
-            <div className="coming-soon">
-              <div className="coming-soon-icon">📂</div>
-              <h3>Folder Administration</h3>
-              <p>Manage shared directories and access controls</p>
-            </div>
-          </div>
-        );
+        return <Folders user={user} onNotification={addNotification} />;
       
       case ROUTES.LOGS:
-        return (
-          <div className="page-content">
-            <div className="page-header">
-              <h2>Activity Logs</h2>
-              <p>View system activity and audit trails</p>
-            </div>
-            <div className="coming-soon">
-              <div className="coming-soon-icon">📋</div>
-              <h3>Activity Monitoring</h3>
-              <p>Comprehensive logging and audit trails</p>
-            </div>
-          </div>
-        );
+        return <ActivityLogs user={user} onNotification={addNotification} />;
       
       case ROUTES.SETTINGS:
         return (
-          <div className="page-content">
-            <div className="page-header">
-              <h2>System Settings</h2>
-              <p>Configure application settings and preferences</p>
-            </div>
-            <div className="coming-soon">
-              <div className="coming-soon-icon">⚙️</div>
-              <h3>Settings Panel</h3>
-              <p>System configuration and preferences</p>
-            </div>
-          </div>
+          <UserSettings 
+            user={user} 
+            onNotification={addNotification}
+            onUserUpdate={updateUser}
+          />
         );
       
       default:

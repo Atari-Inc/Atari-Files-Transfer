@@ -1,41 +1,66 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { usersAPI, dashboardAPI, apiHelpers } from '../../utils/api';
 import './ServerManager.css';
 
 const ServerManager = ({ user, onNotification }) => {
-  const [serverStatus] = useState({
+  const [serverStatus, setServerStatus] = useState({
     status: 'running',
-    uptime: '7d 14h 32m',
-    connections: 8,
-    totalConnections: 1245,
-    lastRestart: '2024-01-08T10:30:00Z'
+    uptime: 'Connected',
+    connections: 0,
+    totalConnections: 0,
+    lastRestart: new Date().toISOString()
   });
 
-  const [connections] = useState([
-    {
-      id: 1,
-      username: 'admin',
-      ip: '192.168.1.100',
-      connectedAt: '2024-01-15T09:30:00Z',
-      status: 'active',
-      transferring: true
-    },
-    {
-      id: 2,
-      username: 'testuser',
-      ip: '192.168.1.105',
-      connectedAt: '2024-01-15T10:15:00Z',
-      status: 'active',
-      transferring: false
-    },
-    {
-      id: 3,
-      username: 'developer',
-      ip: '10.0.0.50',
-      connectedAt: '2024-01-15T11:00:00Z',
-      status: 'idle',
-      transferring: false
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    loadServerData();
+  }, []);
+
+  const loadServerData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Load users
+      const usersResponse = await usersAPI.getAll();
+      
+      // Handle different response structures
+      let usersData = [];
+      if (usersResponse?.data) {
+        if (Array.isArray(usersResponse.data)) {
+          usersData = usersResponse.data;
+        } else if (usersResponse.data.users && Array.isArray(usersResponse.data.users)) {
+          usersData = usersResponse.data.users;
+        } else if (usersResponse.data.data && Array.isArray(usersResponse.data.data)) {
+          usersData = usersResponse.data.data;
+        }
+      }
+      
+      setUsers(usersData);
+
+      // Load dashboard stats for server status
+      const statsResponse = await dashboardAPI.getStats();
+      const stats = statsResponse.data.stats;
+      
+      setServerStatus({
+        status: 'running',
+        uptime: 'Connected',
+        connections: stats.activeUsers || 0,
+        totalConnections: stats.totalUsers || 0,
+        lastRestart: new Date().toISOString()
+      });
+
+    } catch (error) {
+      const errorMessage = apiHelpers.handleError(error, 'Failed to load server data');
+      setError(errorMessage);
+      onNotification?.(errorMessage, 'error');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   const formatUptime = (uptimeString) => {
     return uptimeString;
@@ -52,10 +77,17 @@ const ServerManager = ({ user, onNotification }) => {
 
   const handleServerAction = (action) => {
     onNotification(`Server ${action} initiated`, 'info');
+    // In a real implementation, this would call server management APIs
   };
 
-  const handleKickUser = (username) => {
-    onNotification(`User ${username} has been disconnected`, 'warning');
+  const handleDisableUser = async (username) => {
+    try {
+      // In a real implementation, this would disable the user
+      onNotification(`User ${username} has been disabled`, 'warning');
+      await loadServerData(); // Refresh data
+    } catch (error) {
+      onNotification('Failed to disable user', 'error');
+    }
   };
 
   return (
@@ -132,71 +164,88 @@ const ServerManager = ({ user, onNotification }) => {
           </div>
         </div>
 
-        {/* Active Connections */}
+        {/* User Management */}
         <div className="connections-card">
           <div className="connections-header">
-            <h2>Active Connections</h2>
-            <span className="connection-count">{connections.length} active</span>
+            <h2>System Users</h2>
+            <span className="connection-count">{users.filter(u => u.isActive).length} active users</span>
           </div>
           
-          <div className="connections-list">
-            {connections.map((connection) => (
-              <div key={connection.id} className="connection-item">
-                <div className="connection-info">
-                  <div className="connection-user">
-                    <div className="user-avatar">
-                      {connection.username[0].toUpperCase()}
+          {loading ? (
+            <div className="loading-state">
+              <div className="spinner"></div>
+              <p>Loading users...</p>
+            </div>
+          ) : error ? (
+            <div className="error-state">
+              <p>Error: {error}</p>
+              <button onClick={loadServerData} className="retry-btn">Retry</button>
+            </div>
+          ) : (
+            <div className="connections-list">
+              {users.map((user) => (
+                <div key={user.id} className="connection-item">
+                  <div className="connection-info">
+                    <div className="connection-user">
+                      <div className="user-avatar">
+                        {(user?.firstName?.[0] || user?.username?.[0] || 'U').toUpperCase()}
+                      </div>
+                      <div className="user-details">
+                        <span className="username">{user?.username || 'Unknown'}</span>
+                        <span className="user-ip">
+                          {user.firstName && user.lastName 
+                            ? `${user.firstName} ${user.lastName}` 
+                            : user.email || 'No email'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="user-details">
-                      <span className="username">{connection.username}</span>
-                      <span className="user-ip">{connection.ip}</span>
+                    
+                    <div className="connection-meta">
+                      <div className="connection-time">
+                        <span className="time-label">Last Login</span>
+                        <span className="time-value">
+                          {user.lastLogin ? formatDateTime(user.lastLogin) : 'Never'}
+                        </span>
+                      </div>
+                      
+                      <div className="connection-status">
+                        <div className={`status-badge ${user.status}`}>
+                          {user.status}
+                        </div>
+                        <div className={`role-badge ${user.role}`}>
+                          {user.role}
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="connection-meta">
-                    <div className="connection-time">
-                      <span className="time-label">Connected</span>
-                      <span className="time-value">{formatDateTime(connection.connectedAt)}</span>
-                    </div>
-                    
-                    <div className="connection-status">
-                      <div className={`status-badge ${connection.status}`}>
-                        {connection.status}
-                      </div>
-                      {connection.transferring && (
-                        <div className="transfer-indicator">
-                          <span className="transfer-icon">📤</span>
-                          <span>Transferring</span>
-                        </div>
-                      )}
-                    </div>
+                  <div className="connection-actions">
+                    <button 
+                      className="action-btn info"
+                      title="View Details"
+                    >
+                      👤
+                    </button>
+                    {user.username !== 'admin' && (
+                      <button 
+                        className="action-btn warning"
+                        title="Disable User"
+                        onClick={() => handleDisableUser(user.username)}
+                      >
+                        🚫
+                      </button>
+                    )}
                   </div>
                 </div>
-                
-                <div className="connection-actions">
-                  <button 
-                    className="action-btn info"
-                    title="View Details"
-                  >
-                    ℹ️
-                  </button>
-                  <button 
-                    className="action-btn warning"
-                    title="Kick User"
-                    onClick={() => handleKickUser(connection.username)}
-                  >
-                    👢
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
           
-          {connections.length === 0 && (
+          {!loading && !error && users.length === 0 && (
             <div className="empty-connections">
-              <div className="empty-icon">🔌</div>
-              <h3>No Active Connections</h3>
-              <p>Users will appear here when they connect to the SFTP server</p>
+              <div className="empty-icon">👥</div>
+              <h3>No Users Found</h3>
+              <p>No users are currently registered in the system</p>
             </div>
           )}
         </div>

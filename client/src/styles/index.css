@@ -20,3 +20,7 @@
 @import '../components/file-manager/FileManager.css';
 @import '../components/server-manager/ServerManager.css';
 @import '../components/user-management/UserManagement.css';
+@import '../components/user-settings/UserSettings.css';
+@import '../components/transfers/Transfers.css';
+@import '../components/folders/Folders.css';
+@import '../components/activity-logs/ActivityLogs.css';

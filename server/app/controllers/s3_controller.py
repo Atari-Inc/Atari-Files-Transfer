@@ -199,7 +199,7 @@ def create_s3_blueprint(s3_service: S3Service, auth_service: AuthService) -> Blu
         """Delete object from S3"""
         try:
             # Check if user can delete this object
-            current_user = get_jwt_identity()
+            current_user = auth_service.get_current_user()
             
             # Admin can delete any file, users can only delete their own files
             if (current_user.get('role') != 'admin' and 
@@ -300,7 +300,7 @@ def create_s3_blueprint(s3_service: S3Service, auth_service: AuthService) -> Blu
                 }), 400
             
             # Check permissions for both source and destination
-            current_user = get_jwt_identity()
+            current_user = auth_service.get_current_user()
             
             if (current_user.get('role') != 'admin' and 
                 (not source_key.startswith(f"{current_user.get('username')}/") or
