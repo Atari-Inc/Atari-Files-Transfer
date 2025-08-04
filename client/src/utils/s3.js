@@ -1,5 +1,6 @@
 import { S3_CONFIG, USER_FOLDERS, FOLDER_PERMISSIONS, USER_ROLES } from '../constants';
 import { apiHelpers } from './api';
+import apiClient from './api';
 
 // S3 API endpoints - these would connect to your backend S3 service
 const S3_ENDPOINTS = {
@@ -94,49 +95,14 @@ export const listS3Objects = async (folderPath = '', user) => {
     
     // If no folder path, get all folders
     if (!folderPath) {
-      response = await fetch('http://localhost:5050/api/folders', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      response = await apiClient.get('/api/folders');
     } else {
       // Get files in specific folder
-      response = await fetch(`http://localhost:5050/api/files/${encodeURIComponent(folderPath)}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      response = await apiClient.get(`/api/files/${encodeURIComponent(folderPath)}`);
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`API Error ${response.status}: ${response.statusText}`, errorText);
-      
-      // Handle JWT token issues
-      if (response.status === 422 || response.status === 401) {
-        console.warn('JWT token issue detected, clearing localStorage and redirecting to login');
-        localStorage.clear();
-        window.location.href = '/';
-        throw new Error('Authentication expired. Please login again.');
-      }
-      
-      throw new Error(`Failed to fetch folder contents: ${response.status} ${response.statusText}`);
-    }
-
-    const responseText = await response.text();
-    console.log('Raw API response:', responseText);
-    
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Failed to parse JSON response:', responseText);
-      throw new Error('Server returned invalid JSON response');
-    }
+    const data = response.data;
+    console.log('API response data:', data);
     
     if (!folderPath) {
       // Root level - return folders
@@ -199,20 +165,15 @@ export const uploadFileToS3 = async (file, folderPath, user, onProgress) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`http://localhost:5050/api/files/${encodeURIComponent(folderPath)}/upload`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: formData
+    const response = await apiClient.post(`/api/files/${encodeURIComponent(folderPath)}/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: onProgress ? (progressEvent) => {
+        const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onProgress(progress);
+      } : undefined,
     });
 
-    if (!response.ok) {
-      throw new Error(`Upload failed: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    return result;
+    return response.data;
   } catch (error) {
     console.error('Error uploading file:', error);
     throw error;
@@ -238,29 +199,13 @@ export const deleteS3Object = async (objectPath, user) => {
     let response;
     if (fileName) {
       // Delete file
-      response = await fetch(`http://localhost:5050/api/files/${encodeURIComponent(folderPath)}/${encodeURIComponent(fileName)}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      response = await apiClient.delete(`/api/files/${encodeURIComponent(folderPath)}/${encodeURIComponent(fileName)}`);
     } else {
       // Delete folder
-      response = await fetch(`http://localhost:5050/api/folders/${encodeURIComponent(folderPath)}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      response = await apiClient.delete(`/api/folders/${encodeURIComponent(folderPath)}`);
     }
 
-    if (!response.ok) {
-      throw new Error(`Delete failed: ${response.statusText}`);
-    }
-
-    return await response.json();
+    return response.data;
   } catch (error) {
     console.error('Error deleting object:', error);
     throw error;
@@ -280,22 +225,11 @@ export const createS3Folder = async (folderPath, folderName, user) => {
       throw new Error('Access denied to create folder here');
     }
 
-    const response = await fetch('http://localhost:5050/api/folders', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ 
-        name: folderName
-      })
+    const response = await apiClient.post('/api/folders', { 
+      name: folderName
     });
 
-    if (!response.ok) {
-      throw new Error(`Folder creation failed: ${response.statusText}`);
-    }
-
-    return await response.json();
+    return response.data;
   } catch (error) {
     console.error('Error creating folder:', error);
     throw error;
@@ -318,19 +252,11 @@ export const getDownloadUrl = async (filePath, user) => {
       throw new Error('Access denied to download this file');
     }
 
-    const response = await fetch(`http://localhost:5050/api/files/${encodeURIComponent(folderPath)}/${encodeURIComponent(fileName)}/download`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
+    const response = await apiClient.get(`/api/files/${encodeURIComponent(folderPath)}/${encodeURIComponent(fileName)}/download`);
 
-    if (!response.ok) {
-      throw new Error(`Failed to get download URL: ${response.statusText}`);
-    }
-
-    // Return the response URL directly for download
-    return response.url;
+    // For downloads, we might need to handle this differently depending on backend response
+    // If backend returns a URL, use response.data.url, otherwise use the request URL
+    return response.data.url || response.request.responseURL;
   } catch (error) {
     console.error('Error getting download URL:', error);
     throw error;
@@ -353,24 +279,13 @@ export const moveS3Object = async (sourcePath, destinationPath, user) => {
       throw new Error('Access denied to move this object');
     }
 
-    const response = await fetch(S3_ENDPOINTS.MOVE_OBJECT, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ 
-        sourcePath, 
-        destinationPath, 
-        userId: user.id 
-      })
+    const response = await apiClient.post(S3_ENDPOINTS.MOVE_OBJECT, { 
+      sourcePath, 
+      destinationPath, 
+      userId: user.id 
     });
 
-    if (!response.ok) {
-      throw new Error(`Move failed: ${response.statusText}`);
-    }
-
-    return await response.json();
+    return response.data;
   } catch (error) {
     console.error('Error moving object:', error);
     throw error;
@@ -393,24 +308,13 @@ export const copyS3Object = async (sourcePath, destinationPath, user) => {
       throw new Error('Access denied to copy this object');
     }
 
-    const response = await fetch(S3_ENDPOINTS.COPY_OBJECT, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ 
-        sourcePath, 
-        destinationPath, 
-        userId: user.id 
-      })
+    const response = await apiClient.post(S3_ENDPOINTS.COPY_OBJECT, { 
+      sourcePath, 
+      destinationPath, 
+      userId: user.id 
     });
 
-    if (!response.ok) {
-      throw new Error(`Copy failed: ${response.statusText}`);
-    }
-
-    return await response.json();
+    return response.data;
   } catch (error) {
     console.error('Error copying object:', error);
     throw error;
