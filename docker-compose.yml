@@ -1,0 +1,54 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "5050:5050"
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=development
+      - JWT_SECRET_KEY=your-secret-key-change-this
+    volumes:
+      - ./backend:/app
+    networks:
+      - app-network
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - REACT_APP_API_URL=http://localhost:5050/api
+      - REACT_APP_PROJECT_NAME=SFTP Admin Dashboard
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  sftp:
+    build: ./backend
+    ports:
+      - "2222:2222"
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=development
+      - JWT_SECRET_KEY=your-secret-key-change-this
+    volumes:
+      - ./backend:/app
+      - sftp_data:/sftp
+    command: ["python", "sftp_server.py"]
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  sftp_data: 

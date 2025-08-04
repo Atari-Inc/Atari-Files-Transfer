@@ -1,0 +1,22 @@
+/* Main stylesheet - imports all CSS modules */
+
+/* Import CSS variables and base styles */
+@import './variables.css';
+@import './base.css';
+@import './components.css';
+
+/* Import layout component styles */
+@import '../components/layout/Header.css';
+@import '../components/layout/Sidebar.css';
+
+/* Import common component styles */
+@import '../components/common/Notifications.css';
+
+/* Import auth component styles */
+@import '../components/auth/Login.css';
+
+/* Import page component styles */
+@import '../components/dashboard/Dashboard.css';
+@import '../components/file-manager/FileManager.css';
+@import '../components/server-manager/ServerManager.css';
+@import '../components/user-management/UserManagement.css';

@@ -1,0 +1,466 @@
+{
+  "info": {
+    "name": "SFTP Admin Backend API",
+    "description": "Complete API collection for SFTP Admin Backend with AWS Transfer Family integration",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5050",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "    pm.test('Access token saved', function () {",
+                  "        pm.expect(response.access_token).to.not.be.undefined;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"admin\",\n    \"password\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Authenticate user and get access token"
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "Get current authenticated user information"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "refresh"]
+            },
+            "description": "Refresh access token using refresh token"
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"current_password\": \"admin\",\n    \"new_password\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "change-password"]
+            },
+            "description": "Change current user's password"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Logout current user"
+          }
+        }
+      ]
+    },
+    {
+      "name": "👥 User Management",
+      "item": [
+        {
+          "name": "List All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users"]
+            },
+            "description": "Get list of all users"
+          }
+        },
+        {
+          "name": "Get User by Username",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{username}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{username}}"]
+            },
+            "description": "Get specific user details by username"
+          }
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"testuser\",\n    \"homeDirectory\": \"/testuser\",\n    \"email\": \"test@example.com\",\n    \"firstName\": \"Test\",\n    \"lastName\": \"User\",\n    \"role\": \"user\",\n    \"allowedFolders\": [\"folder1\", \"folder2\"],\n    \"sshPublicKey\": \"ssh-rsa AAAAB3...\",\n    \"tags\": [\n        {\n            \"key\": \"Department\",\n            \"value\": \"IT\"\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/create-user",
+              "host": ["{{base_url}}"],
+              "path": ["api", "create-user"]
+            },
+            "description": "Create a new AWS Transfer Family user"
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"updated@example.com\",\n    \"firstName\": \"Updated\",\n    \"lastName\": \"User\",\n    \"allowedFolders\": [\"folder1\", \"folder3\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/{{username}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{username}}"]
+            },
+            "description": "Update user information"
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/delete-user/{{username}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "delete-user", "{{username}}"]
+            },
+            "description": "Delete user from AWS Transfer Family"
+          }
+        },
+        {
+          "name": "Change User Password",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"newPassword\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/{{username}}/password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{username}}", "password"]
+            },
+            "description": "Change password for specific user"
+          }
+        },
+        {
+          "name": "Get User Credentials",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/user-credentials/{{username}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-credentials", "{{username}}"]
+            },
+            "description": "Get SFTP connection credentials for user"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📁 S3 File Management",
+      "item": [
+        {
+          "name": "List Folders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/folders",
+              "host": ["{{base_url}}"],
+              "path": ["api", "folders"]
+            },
+            "description": "List all S3 folders with sizes and user mappings"
+          }
+        },
+        {
+          "name": "List All Files",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/files?prefix={{folder_prefix}}&limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["api", "files"],
+              "query": [
+                {
+                  "key": "prefix",
+                  "value": "{{folder_prefix}}",
+                  "description": "Optional folder prefix to filter files"
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Maximum number of files to return"
+                }
+              ]
+            },
+            "description": "List files in S3 bucket with optional prefix filtering"
+          }
+        },
+        {
+          "name": "List Files in Folder",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/files/{{folder_name}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "files", "{{folder_name}}"]
+            },
+            "description": "List files in a specific folder"
+          }
+        },
+        {
+          "name": "Upload File",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "folder",
+                  "value": "uploads",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/upload",
+              "host": ["{{base_url}}"],
+              "path": ["api", "upload"]
+            },
+            "description": "Upload a file to S3"
+          }
+        },
+        {
+          "name": "Download File",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/download/{{object_key}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "download", "{{object_key}}"]
+            },
+            "description": "Generate presigned URL for file download"
+          }
+        },
+        {
+          "name": "Delete File",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/delete/{{object_key}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "delete", "{{object_key}}"]
+            },
+            "description": "Delete a file from S3"
+          }
+        },
+        {
+          "name": "Create Folder",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"folder_name\": \"new-folder\",\n    \"description\": \"New folder for user files\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/create-folder",
+              "host": ["{{base_url}}"],
+              "path": ["api", "create-folder"]
+            },
+            "description": "Create a new folder in S3"
+          }
+        },
+        {
+          "name": "Move File/Folder",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"source_key\": \"old-folder/file.txt\",\n    \"destination_key\": \"new-folder/file.txt\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/move",
+              "host": ["{{base_url}}"],
+              "path": ["api", "move"]
+            },
+            "description": "Move or rename a file/folder in S3"
+          }
+        },
+        {
+          "name": "Get File/Folder Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/info/{{object_key}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "info", "{{object_key}}"]
+            },
+            "description": "Get metadata information about a file or folder"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏥 System Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Check application health status"
+          }
+        },
+        {
+          "name": "App Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/info",
+              "host": ["{{base_url}}"],
+              "path": ["info"]
+            },
+            "description": "Get application information and version"
+          }
+        }
+      ]
+    }
+  ]
+}
