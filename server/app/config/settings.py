@@ -49,6 +49,23 @@ class Config:
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", 60))
     
+    # Database Settings
+    DB_HOST = os.getenv("DB_HOST", "localhost")
+    DB_PORT = int(os.getenv("DB_PORT", 5432))
+    DB_NAME = os.getenv("DB_NAME", "atari_files_transfer")
+    DB_USER = os.getenv("DB_USER", "postgres")
+    DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+    DATABASE_URL = os.getenv("DATABASE_URL", f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+    
+    # SQLAlchemy Settings
+    SQLALCHEMY_DATABASE_URI = DATABASE_URL
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+        'pool_recycle': 300,
+        'echo': DEBUG  # SQL logging in debug mode
+    }
+    
     @classmethod
     def validate(cls) -> list[str]:
         """Validate required configuration values"""
@@ -59,6 +76,9 @@ class Config:
             ("AWS_SECRET_ACCESS_KEY", cls.AWS_SECRET_ACCESS_KEY),
             ("TRANSFER_SERVER_ID", cls.TRANSFER_SERVER_ID),
             ("IAM_ROLE_ARN", cls.IAM_ROLE_ARN),
+            ("DB_HOST", cls.DB_HOST),
+            ("DB_USER", cls.DB_USER),
+            ("DB_PASSWORD", cls.DB_PASSWORD),
         ]
         
         for var_name, var_value in required_vars:

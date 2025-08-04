@@ -8,6 +8,7 @@ from flask_jwt_extended import create_access_token, create_refresh_token, get_jw
 import bcrypt
 
 from app.config.settings import Config
+from app.models.database import db, User, Session, AuditLog
 
 logger = logging.getLogger(__name__)
 
@@ -16,14 +17,7 @@ class AuthService:
     
     def __init__(self, config: Config):
         self.config = config
-        # Pre-computed bcrypt hash for password "admin"
-        admin_password_hash = "$2b$12$aVgVrY/M3aj/3qVjKH6bx.epSt8oDA8/Igdo5B94fqz5bWsgHP8r."
-        self.admin_credentials = {
-            "username": "admin",
-            "password": admin_password_hash,
-            "role": "admin",
-            "email": "admin@atari.com"
-        }
+        # Don't create admin user in __init__ to avoid application context issues
     
     def _hash_password(self, password: str) -> str:
         """Hash password using bcrypt"""
@@ -33,28 +27,115 @@ class AuthService:
         """Verify password against hash"""
         return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
     
-    def authenticate(self, username: str, password: str) -> Optional[Dict[str, Any]]:
+    def _ensure_admin_user(self):
+        """Ensure admin user exists in database"""
+        try:
+            admin_user = User.query.filter_by(username='admin').first()
+            if not admin_user:
+                admin_user = User(
+                    username='admin',
+                    email='admin@atari.com',
+                    first_name='System',
+                    last_name='Administrator',
+                    role='admin',
+                    status='active',
+                    is_active=True
+                )
+                admin_user.set_password('admin')  # Default password
+                db.session.add(admin_user)
+                db.session.commit()
+                logger.info("Created default admin user")
+        except Exception as e:
+            logger.error(f"Error ensuring admin user: {str(e)}")
+    
+    def create_user(self, username: str, password: str, email: str = None, 
+                   first_name: str = None, last_name: str = None, role: str = 'user') -> Optional[User]:
+        """Create a new user"""
+        try:
+            # Check if user already exists
+            existing_user = User.query.filter_by(username=username).first()
+            if existing_user:
+                logger.warning(f"User {username} already exists")
+                return None
+            
+            # Create new user
+            user = User(
+                username=username,
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                role=role,
+                status='active',
+                is_active=True
+            )
+            user.set_password(password)
+            
+            db.session.add(user)
+            db.session.commit()
+            
+            logger.info(f"Created new user: {username}")
+            return user
+        except Exception as e:
+            logger.error(f"Error creating user {username}: {str(e)}")
+            db.session.rollback()
+            return None
+    
+    def authenticate(self, username: str, password: str, ip_address: str = None, 
+                    user_agent: str = None) -> Optional[Dict[str, Any]]:
         """
         Authenticate user credentials
         
         Args:
             username: User's username
             password: User's password
+            ip_address: User's IP address (optional)
+            user_agent: User's user agent (optional)
             
         Returns:
             User data if authentication successful, None otherwise
         """
         try:
-            # For now, only support admin login
-            # In production, this would check against a user database
-            if username == self.admin_credentials["username"]:
-                if self._verify_password(password, self.admin_credentials["password"]):
-                    logger.info(f"Successful authentication for user: {username}")
-                    return {
-                        "username": username,
-                        "role": self.admin_credentials["role"],
-                        "email": self.admin_credentials["email"]
-                    }
+            # Find user in database
+            user = User.query.filter_by(username=username).first()
+            if user and user.is_active and user.check_password(password):
+                # Update last login
+                user.update_last_login()
+                
+                # Log audit event
+                audit_log = AuditLog(
+                    user_id=user.id,
+                    username=username,
+                    action='login',
+                    resource_type='authentication',
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    details={'success': True}
+                )
+                db.session.add(audit_log)
+                db.session.commit()
+                
+                logger.info(f"Successful authentication for user: {username}")
+                return {
+                    "id": user.id,
+                    "username": username,
+                    "role": user.role,
+                    "email": user.email,
+                    "firstName": user.first_name,
+                    "lastName": user.last_name
+                }
+            
+            # Log failed attempt
+            audit_log = AuditLog(
+                user_id=user.id if user else None,
+                username=username,
+                action='login_failed',
+                resource_type='authentication',
+                ip_address=ip_address,
+                user_agent=user_agent,
+                details={'success': False, 'reason': 'invalid_credentials'}
+            )
+            db.session.add(audit_log)
+            db.session.commit()
             
             logger.warning(f"Failed authentication attempt for user: {username}")
             return None
@@ -198,16 +279,37 @@ class AuthService:
             True if password changed successfully, False otherwise
         """
         try:
-            # For admin user
-            if username == self.admin_credentials["username"]:
-                if self._verify_password(current_password, self.admin_credentials["password"]):
-                    self.admin_credentials["password"] = self._hash_password(new_password)
-                    logger.info(f"Password changed for user: {username}")
-                    return True
+            user = User.query.filter_by(username=username).first()
+            if user and user.check_password(current_password):
+                user.set_password(new_password)
+                db.session.commit()
+                
+                # Log audit event
+                audit_log = AuditLog(
+                    user_id=user.id,
+                    username=username,
+                    action='password_change',
+                    resource_type='user',
+                    details={'success': True}
+                )
+                db.session.add(audit_log)
+                db.session.commit()
+                
+                logger.info(f"Password changed for user: {username}")
+                return True
             
             logger.warning(f"Failed password change attempt for user: {username}")
             return False
             
         except Exception as e:
             logger.error(f"Password change error for user {username}: {str(e)}")
+            db.session.rollback()
             return False
+    
+    def get_user_by_username(self, username: str) -> Optional[User]:
+        """Get user by username"""
+        try:
+            return User.query.filter_by(username=username).first()
+        except Exception as e:
+            logger.error(f"Error getting user {username}: {str(e)}")
+            return None

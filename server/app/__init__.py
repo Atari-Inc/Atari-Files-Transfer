@@ -5,8 +5,10 @@ import logging
 from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from flask_migrate import Migrate
 
 from app.config.settings import get_config
+from app.models.database import db
 from app.services.auth_service import AuthService
 from app.services.user_service import UserService  
 from app.services.s3_service import S3Service
@@ -46,12 +48,20 @@ def create_app(config_name: str = None) -> Flask:
     app.config['JWT_REFRESH_TOKEN_EXPIRES'] = config.JWT_REFRESH_TOKEN_EXPIRES
     app.config['DEBUG'] = config.DEBUG
     
+    # Database configuration
+    app.config['SQLALCHEMY_DATABASE_URI'] = config.SQLALCHEMY_DATABASE_URI
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = config.SQLALCHEMY_TRACK_MODIFICATIONS
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = config.SQLALCHEMY_ENGINE_OPTIONS
+    
     # Setup logging
     setup_logging(config, 'logs/app.log')
     logger.info(f"Starting {config.APP_NAME} v{config.APP_VERSION}")
     
     # Initialize extensions
     initialize_extensions(app, config)
+    
+    # Initialize database
+    initialize_database(app)
     
     # Initialize services
     services = initialize_services(config)
@@ -100,6 +110,44 @@ def initialize_extensions(app: Flask, config) -> None:
     jwt = JWTManager(app)
     
     logger.info("Extensions initialized successfully")
+
+def initialize_database(app: Flask) -> None:
+    """Initialize database"""
+    
+    # Initialize SQLAlchemy
+    db.init_app(app)
+    
+    # Initialize Flask-Migrate
+    migrate = Migrate(app, db)
+    
+    # Create tables if they don't exist (for development)
+    with app.app_context():
+        try:
+            db.create_all()
+            logger.info("Database tables created successfully")
+            
+            # Ensure admin user exists
+            from app.models.database import User
+            admin_user = User.query.filter_by(username='admin').first()
+            if not admin_user:
+                admin_user = User(
+                    username='admin',
+                    email='admin@atari.com',
+                    first_name='System',
+                    last_name='Administrator',
+                    role='admin',
+                    status='active',
+                    is_active=True
+                )
+                admin_user.set_password('admin')  # Default password
+                db.session.add(admin_user)
+                db.session.commit()
+                logger.info("Created default admin user")
+        except Exception as e:
+            logger.error(f"Database initialization failed: {str(e)}")
+            raise
+    
+    logger.info("Database initialized successfully")
 
 def initialize_services(config) -> dict:
     """Initialize application services"""
