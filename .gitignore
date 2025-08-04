@@ -7,6 +7,13 @@
 *.env
 !.env.example
 
+README-Environment-Setup.md
+setup-env.ps1
+setup-env.sh
+setup-envvv.ps1
+setup-envvv.sh
+docker-compose.env.example
+
 # Python
 __pycache__/
 *.py[cod]
